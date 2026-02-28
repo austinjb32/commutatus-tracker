@@ -4,7 +4,7 @@
 
 // Base URL for the Commutatus API
 // Can be overridden by environment variable or VS Code settings
-export const API_BASE_URL = process.env.API_URL || 'http://localhost:3000';
+export const API_BASE_URL = process.env.API_URL || 'https://api.commutatus.com';
 
 // Extension configuration keys
 export const CONFIG_KEYS = {

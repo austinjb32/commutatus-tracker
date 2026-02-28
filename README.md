@@ -1,71 +1,150 @@
-# commutatus-tracker README
+# Commutatus Task Tracker
 
-This is the README for your extension "commutatus-tracker". After writing up a brief description, we recommend including the following sections.
+A VS Code extension for integrating with Commutatus task tracking via API. Features manual time entry with automatic task ID detection from git branches.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Automatic Task ID Detection**: Extracts task IDs from git branch names (e.g., `NCP-2`, `TRIP-142`)
+- **Manual Time Entry**: Log time with flexible input formats (90, 1h, 1h 30m, 01:30)
+- **Time Rounding**: Automatically rounds time to nearest 15 minutes with confirmation
+- **Commit Integration**: Manual command to log time for last commit with commit message as default note
+- **Task View Panel**: Shows current task details in activity bar
+- **Status Bar**: Displays current task ID in status bar
+- **Workspace Storage**: Task IDs stored per workspace (not in settings files)
 
-For example if there is an image subfolder under your extension project workspace:
+## Installation
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Install the extension from VS Code Marketplace
+2. Reload VS Code
+3. Set up your API token and configure the extension
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Configuration
+
+### Required Setup
+
+1. **Set API Token**:
+   - Open Command Palette (Cmd+Shift+P on Mac, Ctrl+Shift+P on Windows/Linux)
+   - Type "Task: Set API Token" and press Enter
+   - Enter your Commutatus API token when prompted
+   - Press Enter to save the token
+   - You should see a confirmation message "API token saved successfully"
+
+2. **Configure API URL** (if not using default):
+   - Open VS Code Settings (Cmd+, on Mac, File → Preferences → Settings on Windows/Linux)
+   - Search for "Commutatus" in the search bar
+   - Find "Commutatus Tracker › Api Url"
+   - Enter your API endpoint (e.g., `https://api.yourcompany.com`)
+   - Settings are saved automatically
+
+### Optional Settings
+
+- **Commutatus Tracker › Api Url**: Base URL for the Commutatus API (default: `https://api.commutatus.com`)
+
+## Usage
+
+### Automatic Task Detection
+
+The extension automatically detects task IDs from your git branch name:
+- Branch `NCP-2` → Task ID `NCP-2`
+- Branch `feature/NCP-2` → Task ID `NCP-2`
+- Branch `bugfix/TRIP-142-query` → Task ID `TRIP-142`
+
+### Manual Time Logging
+
+1. Open Command Palette (Cmd+Shift+P)
+2. Run "Task: Add Time Log"
+3. Enter what you worked on (note/description)
+4. Enter time spent (e.g., `30m`, `1h`, `1h 30m`, `01:30`)
+5. Confirm to log the time
+
+### Commit Time Logging
+
+To log time for your most recent commit:
+
+1. Open Command Palette (Cmd+Shift+P)
+2. Run "Task: Log Time for Last Commit"
+3. The commit message will be pre-filled as the note
+4. Enter time spent and confirm
+
+### Time Input Formats
+
+- **Minutes**: `90` (90 minutes)
+- **Hours**: `1h` (1 hour)
+- **Hours and Minutes**: `1h 30m` (1 hour 30 minutes)
+- **Time Format**: `01:30` (1 hour 30 minutes)
+
+### Task View Panel
+
+- Located in the Activity Bar with clock icon
+- Shows current task details
+- Refreshes automatically when switching branches
+
+### Status Bar
+
+- Shows current task ID when detected
+- Click to open the Task View panel
+- Updates automatically when switching git branches
+
+## Environment Variables
+
+You can override the default API URL using environment variables:
+
+```bash
+export API_URL="https://api.yourcompany.com"
+```
+
+Restart VS Code after setting the environment variable.
+
+## Development
+
+### Building
+
+```bash
+npm run compile
+```
+
+### Watching for Changes
+
+```bash
+npm run watch
+```
+
+### Packaging
+
+```bash
+npm run package
+```
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VS Code 1.106.0 or higher
+- Git repository (for automatic task ID detection)
+- Commutatus API access
 
-## Extension Settings
+## Troubleshooting
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### Task ID Not Detected
 
-For example:
+- Ensure you're in a git repository
+- Check that your branch name contains a task ID in format `[A-Z]+-\d+`
+- Try manually setting task ID using "Task: Set Task ID" command
 
-This extension contributes the following settings:
+### API Token Issues
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- Verify your API token is valid
+- Check that the API URL is correct
+- Ensure you have network access to the API endpoint
 
-## Known Issues
+### Time Logging Not Working
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- Make sure you have a current task ID set
+- Verify your API token is configured
+- Check the VS Code developer console for error messages
 
-## Release Notes
+## License
 
-Users appreciate release notes as you update your extension.
+This extension is part of the Commutatus ecosystem.
 
-### 1.0.0
+## Support
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+For issues and support, please contact the Commutatus team.

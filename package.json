@@ -67,7 +67,7 @@
       "properties": {
         "commutatusTracker.apiUrl": {
           "type": "string",
-          "default": "",
+          "default": "https://api.commutatus.com",
           "description": "Base URL for the Commutatus API"
         },
         "commutatusTracker.taskId": {
