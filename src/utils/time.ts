@@ -1,15 +1,6 @@
 import { ParsedTime } from '../types';
 import { TIME_LIMITS } from '../config/constants';
 
-/**
- * Parse time input strings into minutes
- * Supports formats:
- * - 90 (minutes)
- * - 1h, 2h (hours)
- * - 30m, 45m (minutes)
- * - 1h 30m, 2h 15m (hours + minutes)
- * - 01:30, 02:15 (HH:MM format)
- */
 export function parseTimeInput(input: string): ParsedTime | null {
   if (!input || typeof input !== 'string') {
     return null;
@@ -17,7 +8,6 @@ export function parseTimeInput(input: string): ParsedTime | null {
 
   const trimmed = input.trim().toLowerCase();
   
-  // Try HH:MM format first
   const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})$/);
   if (timeMatch) {
     const hours = parseInt(timeMatch[1], 10);
@@ -30,7 +20,6 @@ export function parseTimeInput(input: string): ParsedTime | null {
     }
   }
 
-  // Try hours and minutes format (e.g., "1h 30m", "2h", "45m")
   let totalMinutes = 0;
   const hourMatch = trimmed.match(/(\d+(?:\.\d+)?)h/);
   const minuteMatch = trimmed.match(/(\d+)m/);
@@ -44,7 +33,6 @@ export function parseTimeInput(input: string): ParsedTime | null {
     totalMinutes += parseInt(minuteMatch[1], 10);
   }
 
-  // If we found h or m patterns, return the result
   if (hourMatch || minuteMatch) {
     return {
       minutes: totalMinutes,
@@ -52,7 +40,6 @@ export function parseTimeInput(input: string): ParsedTime | null {
     };
   }
 
-  // Try pure number (treated as minutes)
   const numberMatch = trimmed.match(/^(\d+)$/);
   if (numberMatch) {
     const minutes = parseInt(numberMatch[1], 10);
@@ -67,16 +54,10 @@ export function parseTimeInput(input: string): ParsedTime | null {
   return null;
 }
 
-/**
- * Round minutes to nearest 15-minute interval
- */
 export function roundToNearestQuarterHour(minutes: number): number {
   return Math.round(minutes / TIME_LIMITS.QUARTER_HOUR_INTERVAL) * TIME_LIMITS.QUARTER_HOUR_INTERVAL;
 }
 
-/**
- * Validate time entry and apply business rules
- */
 export function validateTimeEntry(minutes: number): { isValid: boolean; roundedMinutes: number; warning?: string } {
   if (minutes <= 0) {
     return { isValid: false, roundedMinutes: 0 };
@@ -103,9 +84,6 @@ export function validateTimeEntry(minutes: number): { isValid: boolean; roundedM
   return { isValid: true, roundedMinutes: rounded };
 }
 
-/**
- * Format minutes for display
- */
 export function formatMinutes(minutes: number): string {
   if (minutes < 60) {
     return `${minutes}m`;
@@ -121,9 +99,6 @@ export function formatMinutes(minutes: number): string {
   return `${hours}h ${remainingMinutes}m`;
 }
 
-/**
- * Check if time entry requires confirmation (>= 4 hours)
- */
 export function requiresConfirmation(minutes: number): boolean {
   return minutes >= TIME_LIMITS.CONFIRMATION_THRESHOLD_MINUTES;
 }

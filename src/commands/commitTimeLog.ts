@@ -4,10 +4,6 @@ import { parseTimeInput, validateTimeEntry, formatMinutes, requiresConfirmation 
 import { ErrorHandler } from '../utils/errorHandler';
 import { GitOperations } from '../utils/git';
 
-/**
- * Command handler for adding time logs triggered by git commit
- * Provides quick time entry with commit message as default note
- */
 export async function commitTimeLogCommand(
   context: vscode.ExtensionContext,
   apiClient: ApiClient,
@@ -18,27 +14,22 @@ export async function commitTimeLogCommand(
   try {
     console.log(`commitTimeLogCommand called with message: ${commitMessage}`);
     
-    // Get current task ID
     const taskId = await taskResolver.getCurrentTaskId();
     console.log(`Task ID: ${taskId}`);
     if (!taskId) {
       console.log('No task ID found, returning silently');
-      // Don't show error for commit-triggered calls, just return silently
       return;
     }
 
-    // Check if API token is available
     const token = await authManager.getApiToken();
     console.log(`API token available: ${!!token}`);
     if (!token) {
       console.log('No API token found, returning silently');
-      // Don't show error for commit-triggered calls, just return silently
       return;
     }
 
     console.log('Proceeding with time logging dialog...');
 
-    // Use commit message as default note if available
     const defaultNote = commitMessage && commitMessage.trim() ? commitMessage.trim() : '';
     
     const note = await vscode.window.showInputBox({
@@ -47,12 +38,10 @@ export async function commitTimeLogCommand(
       value: defaultNote
     });
 
-    // If user cancelled, don't proceed
     if (note === undefined) {
       return;
     }
 
-    // Prompt for time input
     const timeInput = await vscode.window.showInputBox({
       prompt: 'Enter time spent on this commit (e.g., 90, 1h, 1h 30m, 01:30)',
       placeHolder: '30m',
@@ -76,10 +65,9 @@ export async function commitTimeLogCommand(
     });
 
     if (!timeInput) {
-      return; // User cancelled
+      return;
     }
 
-    // Parse and validate time
     const parsed = parseTimeInput(timeInput);
     if (!parsed) {
       ErrorHandler.handleCommandError(
@@ -100,7 +88,6 @@ export async function commitTimeLogCommand(
 
     const roundedMinutes = validation.roundedMinutes;
 
-    // Show warning if time was rounded
     if (validation.warning) {
       const continueAnyway = await ErrorHandler.showWarning(
         validation.warning,
@@ -112,7 +99,6 @@ export async function commitTimeLogCommand(
       }
     }
 
-    // Quick confirmation for commit entries (less verbose)
     const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
     const confirmMessage = `Log ${formatMinutes(roundedMinutes)}${noteText}?`;
     const confirmation = await ErrorHandler.showInfo(
@@ -124,7 +110,6 @@ export async function commitTimeLogCommand(
       return;
     }
 
-    // Prepare and send API request
     const timeLogPayload = {
       time_log: {
         minutes: roundedMinutes,
@@ -132,7 +117,6 @@ export async function commitTimeLogCommand(
       }
     };
 
-    // Show progress indicator
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: 'Logging commit time...',
@@ -141,12 +125,10 @@ export async function commitTimeLogCommand(
       try {
         await apiClient.addTimeLog(taskId, timeLogPayload);
         
-        // Success notification
         ErrorHandler.showSuccess(
           `✅ Logged ${formatMinutes(roundedMinutes)} for task ${taskId}`
         );
 
-        // Refresh any open task views
         vscode.commands.executeCommand('commutatus-tracker.showTask');
         
       } catch (error) {
@@ -159,9 +141,6 @@ export async function commitTimeLogCommand(
   }
 }
 
-/**
- * Extract commit message from git command or recent commit
- */
 export async function getCommitMessage(): Promise<string | null> {
   return await GitOperations.getLastCommitMessage();
 }

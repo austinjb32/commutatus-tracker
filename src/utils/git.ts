@@ -4,21 +4,11 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-/**
- * Centralized git operations utility
- * Provides consistent git command execution and error handling
- */
 export class GitOperations {
-  /**
-   * Get the workspace folder path
-   */
   private static getWorkspaceFolder(): string | null {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || null;
   }
 
-  /**
-   * Execute a git command in the workspace directory
-   */
   private static async execGitCommand(command: string): Promise<{ stdout: string; stderr: string }> {
     const workspaceFolder = this.getWorkspaceFolder();
     if (!workspaceFolder) {
@@ -32,9 +22,6 @@ export class GitOperations {
     }
   }
 
-  /**
-   * Get the last commit message
-   */
   static async getLastCommitMessage(): Promise<string | null> {
     try {
       const { stdout } = await this.execGitCommand('git log -1 --pretty=format:%s');
@@ -45,23 +32,17 @@ export class GitOperations {
     }
   }
 
-  /**
-   * Get current git branch name
-   */
   static async getCurrentBranch(): Promise<string | null> {
     try {
       const { stdout } = await this.execGitCommand('git rev-parse --abbrev-ref HEAD');
       const branch = stdout.trim();
-      return branch === 'HEAD' ? null : branch; // HEAD means detached state
+      return branch === 'HEAD' ? null : branch;
     } catch (error) {
       console.warn('Failed to get current branch:', error);
       return null;
     }
   }
 
-  /**
-   * Check if we're in a git repository
-   */
   static async isInGitRepository(): Promise<boolean> {
     try {
       await this.execGitCommand('git rev-parse --git-dir');
@@ -71,9 +52,6 @@ export class GitOperations {
     }
   }
 
-  /**
-   * Check if there are any commits in the repository
-   */
   static async hasCommits(): Promise<boolean> {
     try {
       await this.execGitCommand('git rev-parse --verify HEAD');
@@ -83,9 +61,6 @@ export class GitOperations {
     }
   }
 
-  /**
-   * Get git directory path
-   */
   static async getGitDir(): Promise<string | null> {
     try {
       const { stdout } = await this.execGitCommand('git rev-parse --git-dir');

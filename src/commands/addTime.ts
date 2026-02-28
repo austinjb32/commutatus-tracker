@@ -3,10 +3,6 @@ import { ApiClient, TaskResolver, AuthManager } from '../types';
 import { parseTimeInput, validateTimeEntry, formatMinutes, requiresConfirmation } from '../utils/time';
 import { ErrorHandler } from '../utils/errorHandler';
 
-/**
- * Command handler for adding time logs
- * Provides manual time entry with validation and confirmation
- */
 export async function addTimeLogCommand(
   context: vscode.ExtensionContext,
   apiClient: ApiClient,
@@ -14,7 +10,6 @@ export async function addTimeLogCommand(
   authManager: AuthManager
 ): Promise<void> {
   try {
-    // Get current task ID
     const taskId = await taskResolver.getCurrentTaskId();
     if (!taskId) {
       ErrorHandler.handleCommandError(
@@ -24,7 +19,6 @@ export async function addTimeLogCommand(
       return;
     }
 
-    // Check if API token is available
     const token = await authManager.getApiToken();
     if (!token) {
       ErrorHandler.handleCommandError(
@@ -34,13 +28,11 @@ export async function addTimeLogCommand(
       return;
     }
 
-    // Prompt for note first
     const note = await vscode.window.showInputBox({
       prompt: 'What did you work on?',
       placeHolder: 'Brief description of your work'
     });
 
-    // Prompt for time input
     const timeInput = await vscode.window.showInputBox({
       prompt: 'Enter time (e.g., 90, 1h, 1h 30m, 01:30)',
       placeHolder: '1h 30m',
@@ -64,10 +56,9 @@ export async function addTimeLogCommand(
     });
 
     if (!timeInput) {
-      return; // User cancelled
+      return;
     }
 
-    // Parse and validate time
     const parsed = parseTimeInput(timeInput);
     if (!parsed) {
       ErrorHandler.handleCommandError(
@@ -88,7 +79,6 @@ export async function addTimeLogCommand(
 
     const roundedMinutes = validation.roundedMinutes;
 
-    // Show warning if time was rounded
     if (validation.warning) {
       const continueAnyway = await ErrorHandler.showWarning(
         validation.warning,
@@ -100,7 +90,6 @@ export async function addTimeLogCommand(
       }
     }
 
-    // Confirm large time entries
     if (requiresConfirmation(roundedMinutes)) {
       const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
       const confirmMessage = `Add ${formatMinutes(roundedMinutes)} to task ${taskId}${noteText}? This is a large time entry.`;
@@ -113,7 +102,6 @@ export async function addTimeLogCommand(
         return;
       }
     } else {
-      // Standard confirmation for normal entries
       const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
       const confirmMessage = `Add ${formatMinutes(roundedMinutes)} to task ${taskId}${noteText}?`;
       const confirmation = await ErrorHandler.showInfo(
@@ -126,7 +114,6 @@ export async function addTimeLogCommand(
       }
     }
 
-    // Prepare and send API request
     const timeLogPayload = {
       time_log: {
         minutes: roundedMinutes,
@@ -134,7 +121,6 @@ export async function addTimeLogCommand(
       }
     };
 
-    // Show progress indicator
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: 'Adding time log...',
@@ -143,13 +129,11 @@ export async function addTimeLogCommand(
       try {
         await apiClient.addTimeLog(taskId, timeLogPayload);
         
-        // Success notification
         const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
         ErrorHandler.showSuccess(
           `✅ Added ${formatMinutes(roundedMinutes)} to task ${taskId}${noteText}`
         );
 
-        // Refresh any open task views
         vscode.commands.executeCommand('commutatus-tracker.showTask');
         
       } catch (error) {
