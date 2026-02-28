@@ -7,7 +7,19 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  logs: TaskLog[];
+  status?: string;
+  priority?: string;
+  due_date?: string;
+  project_category_id?: number;
+  project_category_name?: string;
+  project_category?: string; // From index endpoint
+  assignee_ids?: number[];
+  assignee_names?: string;
+  time_estimate?: string;
+  created_at?: string;
+  updated_at?: string;
+  logs?: TaskLog[]; // From show endpoint
+  comments?: TaskLog[]; // From index/create/update endpoints
   time_logs: TimeLog[];
 }
 
@@ -19,14 +31,16 @@ export interface TaskLog {
 }
 
 export interface TimeLog {
-  date: string;
+  date: string; // Now in ISO8601 format
   minutes: number;
   note?: string;
 }
 
 export interface TimeLogPayload {
-  minutes: number;
-  note?: string;
+  time_log: {
+    minutes: number;
+    note?: string;
+  };
 }
 
 export interface ApiClient {

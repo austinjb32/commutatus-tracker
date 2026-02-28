@@ -10,6 +10,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'commutatus-tracker-taskView';
   
   private _view?: vscode.WebviewView;
+  private _panel?: vscode.WebviewPanel;
   private apiClient?: ApiClient;
   private taskResolver?: TaskResolver;
   private authManager?: AuthManager;
@@ -23,6 +24,11 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
     this.apiClient = apiClient;
     this.taskResolver = taskResolver;
     this.authManager = authManager;
+    
+    // Refresh the sidebar view if it's already visible
+    if (this._view) {
+      this.refreshTaskData();
+    }
   }
 
   /**
@@ -33,6 +39,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
     context: vscode.WebviewViewResolveContext<unknown>,
     _token: vscode.CancellationToken,
   ) {
+    console.log('TaskWebviewProvider.resolveWebviewView called!');
     this._view = webviewView;
 
     webviewView.webview.options = {
@@ -57,8 +64,10 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
       }
     });
 
-    // Initial load
-    this.refreshTaskData();
+    // Initial load - only refresh if services are available
+    if (this.apiClient && this.taskResolver && this.authManager) {
+      this.refreshTaskData();
+    }
   }
 
   /**
@@ -69,7 +78,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
     this.taskResolver = taskResolver;
     this.authManager = authManager;
 
-    if (!this._view) {
+    if (!this._panel) {
       // If no panel exists, create one
       const panel = vscode.window.createWebviewPanel(
         TaskWebviewProvider.viewType,
@@ -94,34 +103,66 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
         }
       });
 
-      this._view = panel as any;
+      this._panel = panel;
       await this.refreshTaskData();
     } else {
       // Focus existing panel
-      this._view.show();
+      this._panel.reveal();
     }
   }
 
   /**
    * Refresh task data and update webview
    */
-  private async refreshTaskData(): Promise<void> {
-    if (!this._view || !this.apiClient || !this.taskResolver || !this.authManager) {
+  async refreshTaskData(): Promise<void> {
+    if (!this.taskResolver || !this.authManager) {
+      return;
+    }
+
+    if (!this.apiClient) {
+      const configErrorHtml = this._getConfigErrorHtml();
+      if (this._view) {
+        this._view.webview.html = configErrorHtml;
+      }
+      if (this._panel) {
+        this._panel.webview.html = configErrorHtml;
+      }
       return;
     }
 
     try {
       const taskId = await this.taskResolver.getCurrentTaskId();
+      
       if (!taskId) {
-        this._view.webview.html = this._getNoTaskHtml();
+        const noTaskHtml = this._getNoTaskHtml();
+        if (this._view) {
+          this._view.webview.html = noTaskHtml;
+        }
+        if (this._panel) {
+          this._panel.webview.html = noTaskHtml;
+        }
         return;
       }
 
       const task = await this.apiClient.getTask(taskId);
-      this._view.webview.html = this._getHtmlForTask(task);
+      const taskHtml = this._getHtmlForTask(task);
+      
+      if (this._view) {
+        this._view.webview.html = taskHtml;
+      }
+      if (this._panel) {
+        this._panel.webview.html = taskHtml;
+      }
     } catch (error) {
       console.error('Error refreshing task data:', error);
-      this._view.webview.html = this._getErrorHtml(error instanceof Error ? error.message : 'Unknown error');
+      const errorHtml = this._getErrorHtml(error instanceof Error ? error.message : 'Unknown error');
+      
+      if (this._view) {
+        this._view.webview.html = errorHtml;
+      }
+      if (this._panel) {
+        this._panel.webview.html = errorHtml;
+      }
     }
   }
 
@@ -208,6 +249,21 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
                 font-weight: bold;
                 color: var(--vscode-textLink-foreground);
             }
+            .comment-item {
+                margin-bottom: 10px;
+                padding: 8px;
+                background-color: var(--vscode-editor-background);
+                border-left: 3px solid var(--vscode-textLink-foreground);
+            }
+            .comment-meta {
+                font-size: 0.9em;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 5px;
+            }
+            .comment-message {
+                font-size: 0.9em;
+                margin-bottom: 5px;
+            }
             .button {
                 background-color: var(--vscode-button-background);
                 color: var(--vscode-button-foreground);
@@ -266,16 +322,26 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
     const timeLogsHtml = task.time_logs.map(log => `
         <div class="time-log-item">
             <div class="time-log-duration">${formatMinutes(log.minutes)}</div>
-            <div class="log-meta">Date: ${log.date}${log.note ? ` | Note: ${log.note}` : ''}</div>
+            <div class="log-meta">Date: ${this._formatDate(log.date)}${log.note ? ` | Note: ${log.note}` : ''}</div>
         </div>
     `).join('');
 
-    const logsHtml = task.logs.map(log => `
-        <div class="log-item">
-            <div class="log-meta">${log.created_at} - ${log.user}</div>
-            <div>${log.message}</div>
+    // Use logs or comments field, whichever is available
+    const commentsHtml = task.comments?.map(log => `
+        <div class="comment-item">
+            <div class="comment-meta">${log.user} ${this._formatDateTime(log.created_at)}</div>
+            <div class="comment-message">${log.message}</div>
         </div>
     `).join('');
+
+    const taskMetaHtml = `
+        ${task.status ? `<div class="task-meta"><strong>Status:</strong> ${this._formatStatus(task.status)}</div>` : ''}
+        ${task.priority ? `<div class="task-meta"><strong>Priority:</strong> ${this._formatPriority(task.priority)}</div>` : ''}
+        ${task.due_date ? `<div class="task-meta"><strong>Due:</strong> ${this._formatDate(task.due_date)}</div>` : ''}
+        ${task.project_category_name ? `<div class="task-meta"><strong>Project:</strong> ${task.project_category_name}</div>` : ''}
+        ${task.assignee_names ? `<div class="task-meta"><strong>Assignees:</strong> ${task.assignee_names}</div>` : ''}
+        ${task.time_estimate ? `<div class="task-meta"><strong>Estimate:</strong> ${task.time_estimate}</div>` : ''}
+    `;
 
     return `<!DOCTYPE html>
     <html lang="en">
@@ -310,9 +376,31 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
                 margin-bottom: 10px;
             }
             .task-description {
-                margin-bottom: 20px;
+                margin-bottom: 15px;
                 white-space: pre-wrap;
             }
+            .task-meta {
+                font-size: 0.9em;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 5px;
+            }
+            .task-meta strong {
+                color: var(--vscode-foreground);
+            }
+            .status-badge, .priority-badge {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 0.8em;
+                font-weight: bold;
+                margin-right: 5px;
+            }
+            .status-to_do { background-color: #6c757d; color: white; }
+            .status-in_progress { background-color: #007bff; color: white; }
+            .status-completed { background-color: #28a745; color: white; }
+            .priority-low { background-color: #28a745; color: white; }
+            .priority-medium { background-color: #ffc107; color: black; }
+            .priority-high { background-color: #dc3545; color: white; }
             .section {
                 margin-bottom: 25px;
             }
@@ -360,6 +448,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
             <div class="task-id">${task.id}</div>
             <div class="task-title">${task.title}</div>
             ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+            ${taskMetaHtml ? `<div class="task-meta-section">${taskMetaHtml}</div>` : ''}
         </div>
         
         <div class="actions">
@@ -374,10 +463,10 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
         </div>
         ` : ''}
         
-        ${task.logs.length > 0 ? `
+        ${(task?.comments?.length ?? 0 > 0) ? `
         <div class="section">
-            <div class="section-title">Activity Logs</div>
-            ${logsHtml}
+            <div class="section-title">Comments</div>
+            ${commentsHtml}
         </div>
         ` : ''}
         
@@ -453,6 +542,71 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
+   * Generate HTML for configuration error state
+   */
+  private _getConfigErrorHtml(): string {
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Configuration Required</title>
+        <style>
+            body {
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+                color: var(--vscode-foreground);
+                background-color: var(--vscode-editor-background);
+                margin: 0;
+                padding: 20px;
+                line-height: 1.4;
+            }
+            .error {
+                color: var(--vscode-errorForeground);
+                background-color: var(--vscode-inputValidation-errorBackground);
+                padding: 15px;
+                border-radius: 3px;
+                margin-bottom: 20px;
+            }
+            .message {
+                margin-bottom: 20px;
+                color: var(--vscode-descriptionForeground);
+            }
+            .button {
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border: none;
+                padding: 8px 16px;
+                cursor: pointer;
+                margin-right: 10px;
+            }
+            .button:hover {
+                background-color: var(--vscode-button-hoverBackground);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="error">
+            <h3>Configuration Required</h3>
+            <p>Commutatus API URL not configured.</p>
+        </div>
+        <div class="message">
+            <p>Please configure the API URL in the extension settings to use the task tracker.</p>
+        </div>
+        <button class="button" onclick="openSettings()">⚙️ Open Settings</button>
+        
+        <script>
+            const vscode = acquireVsCodeApi();
+            
+            function openSettings() {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'commutatusTracker.apiUrl');
+            }
+        </script>
+    </body>
+    </html>`;
+  }
+
+  /**
    * Generate HTML for error state
    */
   private _getErrorHtml(errorMessage: string): string {
@@ -508,5 +662,53 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
         </script>
     </body>
     </html>`;
+  }
+
+  /**
+   * Format status for display
+   */
+  private _formatStatus(status: string): string {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  /**
+   * Format priority for display
+   */
+  private _formatPriority(priority: string): string {
+    return priority.charAt(0).toUpperCase() + priority.slice(1);
+  }
+
+  /**
+   * Format date for display
+   */
+  private _formatDate(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch {
+      return dateString;
+    }
+  }
+
+  /**
+   * Format date and time for display (for comments)
+   */
+  private _formatDateTime(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
   }
 }

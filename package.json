@@ -4,42 +4,52 @@
   "description": "Integrate with Commutatus task tracking via API. Manual time entry only.",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.108.1"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:commutatus-tracker",
+    "onCommand:git.checkout"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "commutatus-tracker.addTimeLog",
         "title": "Task: Add Time Log",
-        "category": "Task"
+        "category": "Commutatus"
+      },
+      {
+        "command": "commutatus-tracker.logCommitTime",
+        "title": "Task: Log Time for Last Commit",
+        "category": "Commutatus"
       },
       {
         "command": "commutatus-tracker.showTask",
         "title": "Task: Show Current Task",
-        "category": "Task"
+        "category": "Commutatus"
       },
       {
         "command": "commutatus-tracker.setApiToken",
         "title": "Task: Set API Token",
-        "category": "Task"
+        "category": "Commutatus"
       },
       {
         "command": "commutatus-tracker.setTaskId",
         "title": "Task: Set Task ID",
-        "category": "Task"
+        "category": "Commutatus"
       }
     ],
     "views": {
-      "explorer": [
+      "commutatus-tracker": [
         {
           "id": "commutatus-tracker-taskView",
-          "name": "Task Tracker",
-          "when": "commutatus-tracker.hasActiveTask"
+          "type": "webview",
+          "name": "Task Details",
+          "icon": "$(clock)"
         }
       ]
     },
@@ -48,7 +58,7 @@
         {
           "id": "commutatus-tracker",
           "title": "Task Tracker",
-          "icon": "$(bookmark)"
+          "icon": "$(clock)"
         }
       ]
     },
@@ -59,6 +69,11 @@
           "type": "string",
           "default": "",
           "description": "Base URL for the Commutatus API"
+        },
+        "commutatusTracker.taskId": {
+          "type": "string",
+          "default": "",
+          "description": "Current task ID for this workspace"
         }
       }
     }
@@ -78,7 +93,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.108.1",
+    "@types/vscode": "^1.106.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "typescript-eslint": "^8.52.0",

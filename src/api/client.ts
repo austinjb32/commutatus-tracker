@@ -30,6 +30,7 @@ export class CommutatusApiClient implements ApiClient {
     }
 
     const url = `${this.baseUrl}/api/tasks/${encodeURIComponent(taskId)}`;
+    console.log(`Fetching task from: ${url}`);
     
     try {
       const response = await fetch(url, {
@@ -78,7 +79,8 @@ export class CommutatusApiClient implements ApiClient {
         headers: {
           'Authorization': `Bearer ${this.authToken}`,
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'X-CSRF-Token': 'skip'
         },
         body: JSON.stringify(payload)
       });
@@ -123,11 +125,13 @@ export class CommutatusApiClient implements ApiClient {
       throw new Error('Invalid task response: invalid description');
     }
 
-    // Validate arrays
-    if (!Array.isArray(task.logs)) {
-      task.logs = [];
+    // Handle both logs and comments fields
+    const logs = task.logs || task.comments || [];
+    if (!Array.isArray(logs)) {
+      throw new Error('Invalid task response: logs/comments must be an array');
     }
 
+    // Validate time logs array
     if (!Array.isArray(task.time_logs)) {
       task.time_logs = [];
     }
@@ -136,7 +140,19 @@ export class CommutatusApiClient implements ApiClient {
       id: task.id,
       title: task.title,
       description: task.description || '',
-      logs: task.logs || [],
+      status: task.status,
+      priority: task.priority,
+      due_date: task.due_date,
+      project_category_id: task.project_category_id,
+      project_category_name: task.project_category_name,
+      project_category: task.project_category,
+      assignee_ids: task.assignee_ids,
+      assignee_names: task.assignee_names,
+      time_estimate: task.time_estimate,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+      logs: logs,
+      comments: logs, // Use same array for both fields
       time_logs: task.time_logs || []
     };
   }

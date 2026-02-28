@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { TaskResolver } from '../types';
+import { STORAGE_KEYS } from '../config/constants';
 
 const execAsync = promisify(exec);
 
@@ -11,39 +12,38 @@ const execAsync = promisify(exec);
  */
 export class GitBranchTaskResolver implements TaskResolver {
   private static readonly TASK_ID_REGEX = /[A-Z]+-\d+/;
-  private static readonly WORKSPACE_TASK_ID_KEY = 'commutatus-tracker.taskId';
+
+  constructor(private context?: vscode.ExtensionContext) {}
 
   /**
-   * Get current task ID from git branch or cached workspace value
-   * Priority: git branch > cached workspace value
+   * Get current task ID from git branch or session storage
+   * Priority: git branch > session storage
    */
   async getCurrentTaskId(): Promise<string | null> {
     try {
       // First try to get from current git branch
       const branchTaskId = await this.getTaskIdFromGitBranch();
       if (branchTaskId) {
-        // Cache it for this workspace
+        // Cache it in session storage
         await this.setTaskId(branchTaskId);
         return branchTaskId;
       }
 
-      // Fall back to cached workspace value
-      return await this.getCachedTaskId();
+      // Fall back to session storage
+      return await this.getSessionTaskId();
     } catch (error) {
       console.error('Error getting current task ID:', error);
-      return await this.getCachedTaskId();
+      return await this.getSessionTaskId();
     }
   }
 
   /**
-   * Set task ID for current workspace
+   * Set task ID in workspace session storage
    */
   async setTaskId(taskId: string): Promise<void> {
-    await vscode.workspace.getConfiguration().update(
-      GitBranchTaskResolver.WORKSPACE_TASK_ID_KEY,
-      taskId,
-      vscode.ConfigurationTarget.Workspace
-    );
+    if (this.context) {
+      await this.context.workspaceState.update(STORAGE_KEYS.CURRENT_TASK_ID, taskId);
+    }
   }
 
   /**
@@ -75,11 +75,13 @@ export class GitBranchTaskResolver implements TaskResolver {
   }
 
   /**
-   * Get cached task ID from workspace settings
+   * Get task ID from workspace session storage
    */
-  private async getCachedTaskId(): Promise<string | null> {
-    const config = vscode.workspace.getConfiguration();
-    return config.get<string>(GitBranchTaskResolver.WORKSPACE_TASK_ID_KEY) || null;
+  private async getSessionTaskId(): Promise<string | null> {
+    if (this.context) {
+      return this.context.workspaceState.get<string>(STORAGE_KEYS.CURRENT_TASK_ID) || null;
+    }
+    return null;
   }
 
   /**
