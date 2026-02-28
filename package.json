@@ -3,6 +3,7 @@
   "displayName": "Commutatus Task Tracker",
   "description": "Integrate with Commutatus task tracking via API. Manual time entry only.",
   "version": "0.0.1",
+  "license": "COMMERCIAL",
   "engines": {
     "vscode": "^1.106.0"
   },

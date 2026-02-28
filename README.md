@@ -143,7 +143,17 @@ npm run package
 
 ## License
 
-This extension is part of the Commutatus ecosystem.
+This software is licensed under a Commercial Software License Agreement. See the [LICENSE](LICENSE) file for the full terms and conditions.
+
+### License Summary
+
+- **Commercial Use**: Licensed for commercial use
+- **Modification**: No modification or derivative works allowed
+- **Distribution**: No redistribution or sublicensing permitted
+- **Warranty**: Software provided "AS IS" without warranty
+- **Liability**: Limited liability as outlined in the license
+
+For licensing inquiries or to request additional permissions, please contact Austin.
 
 ## Support
 
