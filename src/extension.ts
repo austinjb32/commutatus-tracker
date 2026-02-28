@@ -8,29 +8,7 @@ import { commitTimeLogCommand } from './commands/commitTimeLog';
 import { setApiTokenCommand } from './commands/setToken';
 import { setTaskIdCommand } from './commands/setTaskId';
 import { API_BASE_URL } from './config/constants';
-
-const exec = require('child_process').exec;
-const util = require('util');
-const execAsync = util.promisify(exec);
-
-/**
- * Get the last commit message
- */
-async function getLastCommitMessage(): Promise<string | null> {
-  try {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspaceFolder) {
-      return null;
-    }
-
-    const { stdout } = await execAsync('git log -1 --pretty=format:%s', {
-      cwd: workspaceFolder
-    });
-    return stdout.trim() || null;
-  } catch (error) {
-    return null;
-  }
-}
+import { GitOperations } from './utils/git';
 
 /**
  * Extension activation entry point
@@ -75,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand('commutatus-tracker.logCommitTime', async () => {
       // Get the last commit message to use as default note
-      const commitMessage = await getLastCommitMessage();
+      const commitMessage = await GitOperations.getLastCommitMessage();
       console.log(`Manual trigger - Commit message: ${commitMessage}`);
       await commitTimeLogCommand(context, apiClient, taskResolver, authManager, commitMessage || undefined);
     }),
@@ -129,10 +107,23 @@ export function activate(context: vscode.ExtensionContext) {
   let currentBranch = '';
   let branchChangeTimeout: NodeJS.Timeout | undefined;
   
+  // Define proper types for Git API
+  interface GitRepository {
+    state: {
+      HEAD?: { name?: string };
+      onDidChange: vscode.Event<void>;
+    };
+  }
+
+  interface GitAPI {
+    repositories: GitRepository[];
+    onDidOpenRepository: vscode.Event<GitRepository>;
+  }
+  
   const updateCurrentBranch = async () => {
     try {
       if (gitExtension && gitExtension.isActive) {
-        const git = gitExtension.exports.getAPI(1);
+        const git = gitExtension.exports.getAPI(1) as GitAPI;
         const repositories = git.repositories;
         if (repositories.length > 0) {
           const repo = repositories[0];
@@ -145,6 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
             // Clear any existing timeout
             if (branchChangeTimeout) {
               clearTimeout(branchChangeTimeout);
+              branchChangeTimeout = undefined;
             }
             
             await updateStatusBar();
@@ -161,7 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
   updateCurrentBranch();
 
   // Set up git state change listener if git extension is available
-  const setupGitListener = (git: any) => {
+  const setupGitListener = (git: GitAPI) => {
     if (git.repositories.length > 0) {
       const repo = git.repositories[0];
       
@@ -172,7 +164,7 @@ export function activate(context: vscode.ExtensionContext) {
       context.subscriptions.push(disposable);
     } else {
       // Listen for when repositories are added
-      const repoDisposable = git.onDidOpenRepository((repo: any) => {
+      const repoDisposable = git.onDidOpenRepository((repo: GitRepository) => {
         const stateDisposable = repo.state.onDidChange(() => {
           updateCurrentBranch();
         });
@@ -184,23 +176,33 @@ export function activate(context: vscode.ExtensionContext) {
 
   if (gitExtension) {
     if (gitExtension.isActive) {
-      const git = gitExtension.exports.getAPI(1);
+      const git = gitExtension.exports.getAPI(1) as GitAPI;
       setupGitListener(git);
     } else {
       // Wait for git extension to activate
       gitExtension.activate().then(() => {
-        const git = gitExtension.exports.getAPI(1);
+        const git = gitExtension.exports.getAPI(1) as GitAPI;
         setupGitListener(git);
       });
     }
   }
 
+  // Add cleanup for branch change timeout
+  const cleanupTimeout = () => {
+    if (branchChangeTimeout) {
+      clearTimeout(branchChangeTimeout);
+      branchChangeTimeout = undefined;
+    }
+  };
+
+  context.subscriptions.push({ dispose: cleanupTimeout });
+
   // Initialize task webview provider with services
   taskWebviewProvider.initialize(apiClient, taskResolver, authManager);
 
   // Auto-show sidebar view if there's an active task on startup
-  // Wait for VS Code to be fully loaded and extension to be ready
-  setTimeout(async () => {
+  // Use proper extension lifecycle instead of arbitrary timeout
+  const checkAndShowTask = async () => {
     try {
       const taskId = await taskResolver.getCurrentTaskId();
       if (taskId) {
@@ -210,7 +212,11 @@ export function activate(context: vscode.ExtensionContext) {
     } catch (error) {
       console.error('Error checking for active task on startup:', error);
     }
-  }, 2000); // Increased delay to ensure everything is loaded
+  };
+
+  // Show task view after extension is fully activated
+  // Use a small timeout only to ensure UI is ready, not for initialization
+  setTimeout(checkAndShowTask, 500);
 }
 
 /**

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { ApiClient, TaskResolver, AuthManager } from '../types';
 import { parseTimeInput, validateTimeEntry, formatMinutes, requiresConfirmation } from '../utils/time';
+import { ErrorHandler } from '../utils/errorHandler';
+import { GitOperations } from '../utils/git';
 
 /**
  * Command handler for adding time logs triggered by git commit
@@ -80,13 +82,19 @@ export async function commitTimeLogCommand(
     // Parse and validate time
     const parsed = parseTimeInput(timeInput);
     if (!parsed) {
-      vscode.window.showErrorMessage('Invalid time format');
+      ErrorHandler.handleCommandError(
+        new Error('Invalid time format'),
+        'log commit time'
+      );
       return;
     }
 
     const validation = validateTimeEntry(parsed.minutes);
     if (!validation.isValid) {
-      vscode.window.showErrorMessage(validation.warning || 'Invalid time entry');
+      ErrorHandler.handleCommandError(
+        new Error(validation.warning || 'Invalid time entry'),
+        'log commit time'
+      );
       return;
     }
 
@@ -94,7 +102,7 @@ export async function commitTimeLogCommand(
 
     // Show warning if time was rounded
     if (validation.warning) {
-      const continueAnyway = await vscode.window.showWarningMessage(
+      const continueAnyway = await ErrorHandler.showWarning(
         validation.warning,
         'Continue Anyway',
         'Cancel'
@@ -107,7 +115,7 @@ export async function commitTimeLogCommand(
     // Quick confirmation for commit entries (less verbose)
     const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
     const confirmMessage = `Log ${formatMinutes(roundedMinutes)}${noteText}?`;
-    const confirmation = await vscode.window.showInformationMessage(
+    const confirmation = await ErrorHandler.showInfo(
       confirmMessage,
       'Log Time',
       'Skip'
@@ -134,7 +142,7 @@ export async function commitTimeLogCommand(
         await apiClient.addTimeLog(taskId, timeLogPayload);
         
         // Success notification
-        vscode.window.showInformationMessage(
+        ErrorHandler.showSuccess(
           `✅ Logged ${formatMinutes(roundedMinutes)} for task ${taskId}`
         );
 
@@ -142,16 +150,12 @@ export async function commitTimeLogCommand(
         vscode.commands.executeCommand('commutatus-tracker.showTask');
         
       } catch (error) {
-        console.error('Error adding time log:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        vscode.window.showErrorMessage(`Failed to log time: ${errorMessage}`);
+        ErrorHandler.handleCommandError(error, 'log commit time');
       }
     });
 
   } catch (error) {
-    console.error('Error in commitTimeLogCommand:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    vscode.window.showErrorMessage(`Failed to log time: ${errorMessage}`);
+    ErrorHandler.handleCommandError(error, 'log commit time');
   }
 }
 
@@ -159,24 +163,5 @@ export async function commitTimeLogCommand(
  * Extract commit message from git command or recent commit
  */
 export async function getCommitMessage(): Promise<string | null> {
-  try {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspaceFolder) {
-      return null;
-    }
-
-    const { exec } = require('child_process');
-    const { promisify } = require('util');
-    const execAsync = promisify(exec);
-
-    // Try to get the current commit message (if in the middle of a commit)
-    // This is a fallback approach since we can't easily intercept git commit messages
-    const { stdout } = await execAsync('git log -1 --pretty=format:%s', {
-      cwd: workspaceFolder
-    });
-
-    return stdout.trim() || null;
-  } catch (error) {
-    return null;
-  }
+  return await GitOperations.getLastCommitMessage();
 }

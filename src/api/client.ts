@@ -91,8 +91,19 @@ export class CommutatusApiClient implements ApiClient {
         } else if (response.status === 404) {
           throw new Error(`Task ${taskId} not found.`);
         } else if (response.status === 400) {
-          const errorData = await response.json().catch(() => ({})) as any;
-          throw new Error(`Invalid time log data: ${errorData.message || 'Unknown error'}`);
+          let errorMessage = 'Invalid time log data';
+          try {
+            const errorData = await response.json() as any;
+            if (errorData && typeof errorData === 'object' && errorData.message && typeof errorData.message === 'string') {
+              errorMessage = `Invalid time log data: ${errorData.message}`;
+            } else {
+              errorMessage = 'Invalid time log data: Unknown error';
+            }
+          } catch (parseError) {
+            // If JSON parsing fails, use generic error message
+            errorMessage = 'Invalid time log data: Unable to parse error response';
+          }
+          throw new Error(errorMessage);
         } else {
           throw new Error(`API request failed: ${response.status} ${response.statusText}`);
         }

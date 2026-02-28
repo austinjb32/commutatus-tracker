@@ -1,4 +1,5 @@
 import { ParsedTime } from '../types';
+import { TIME_LIMITS } from '../config/constants';
 
 /**
  * Parse time input strings into minutes
@@ -55,7 +56,7 @@ export function parseTimeInput(input: string): ParsedTime | null {
   const numberMatch = trimmed.match(/^(\d+)$/);
   if (numberMatch) {
     const minutes = parseInt(numberMatch[1], 10);
-    if (minutes >= 0 && minutes <= 480) { // Reasonable limit: 8 hours max
+    if (minutes >= 0 && minutes <= TIME_LIMITS.MAX_MINUTES_FOR_PURE_NUMBER) {
       return {
         minutes,
         originalInput: input
@@ -70,7 +71,7 @@ export function parseTimeInput(input: string): ParsedTime | null {
  * Round minutes to nearest 15-minute interval
  */
 export function roundToNearestQuarterHour(minutes: number): number {
-  return Math.round(minutes / 15) * 15;
+  return Math.round(minutes / TIME_LIMITS.QUARTER_HOUR_INTERVAL) * TIME_LIMITS.QUARTER_HOUR_INTERVAL;
 }
 
 /**
@@ -81,11 +82,11 @@ export function validateTimeEntry(minutes: number): { isValid: boolean; roundedM
     return { isValid: false, roundedMinutes: 0 };
   }
 
-  if (minutes > 480) { // More than 8 hours
+  if (minutes > TIME_LIMITS.MAX_MINUTES_PER_ENTRY) {
     return { 
       isValid: false, 
       roundedMinutes: 0,
-      warning: 'Time entries cannot exceed 8 hours (480 minutes)'
+      warning: `Time entries cannot exceed ${TIME_LIMITS.MAX_MINUTES_PER_ENTRY} minutes (${Math.floor(TIME_LIMITS.MAX_MINUTES_PER_ENTRY / 60)} hours)`
     };
   }
 
@@ -95,7 +96,7 @@ export function validateTimeEntry(minutes: number): { isValid: boolean; roundedM
     return {
       isValid: true,
       roundedMinutes: rounded,
-      warning: `Time rounded to ${rounded} minutes (nearest 15 minutes)`
+      warning: `Time rounded to ${rounded} minutes (nearest ${TIME_LIMITS.QUARTER_HOUR_INTERVAL} minutes)`
     };
   }
 
@@ -124,5 +125,5 @@ export function formatMinutes(minutes: number): string {
  * Check if time entry requires confirmation (>= 4 hours)
  */
 export function requiresConfirmation(minutes: number): boolean {
-  return minutes >= 240; // 4 hours
+  return minutes >= TIME_LIMITS.CONFIRMATION_THRESHOLD_MINUTES;
 }

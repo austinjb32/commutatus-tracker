@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ApiClient, TaskResolver, AuthManager } from '../types';
 import { parseTimeInput, validateTimeEntry, formatMinutes, requiresConfirmation } from '../utils/time';
+import { ErrorHandler } from '../utils/errorHandler';
 
 /**
  * Command handler for adding time logs
@@ -16,14 +17,20 @@ export async function addTimeLogCommand(
     // Get current task ID
     const taskId = await taskResolver.getCurrentTaskId();
     if (!taskId) {
-      vscode.window.showErrorMessage('No active task found. Please switch to a task branch or set a task ID manually.');
+      ErrorHandler.handleCommandError(
+        new Error('No active task found'),
+        'add time log - please switch to a task branch or set a task ID manually'
+      );
       return;
     }
 
     // Check if API token is available
     const token = await authManager.getApiToken();
     if (!token) {
-      vscode.window.showErrorMessage('API token not configured. Please set your API token first.');
+      ErrorHandler.handleCommandError(
+        new Error('API token not configured'),
+        'add time log - please set your API token first'
+      );
       return;
     }
 
@@ -63,13 +70,19 @@ export async function addTimeLogCommand(
     // Parse and validate time
     const parsed = parseTimeInput(timeInput);
     if (!parsed) {
-      vscode.window.showErrorMessage('Invalid time format');
+      ErrorHandler.handleCommandError(
+        new Error('Invalid time format'),
+        'add time log'
+      );
       return;
     }
 
     const validation = validateTimeEntry(parsed.minutes);
     if (!validation.isValid) {
-      vscode.window.showErrorMessage(validation.warning || 'Invalid time entry');
+      ErrorHandler.handleCommandError(
+        new Error(validation.warning || 'Invalid time entry'),
+        'add time log'
+      );
       return;
     }
 
@@ -77,7 +90,7 @@ export async function addTimeLogCommand(
 
     // Show warning if time was rounded
     if (validation.warning) {
-      const continueAnyway = await vscode.window.showWarningMessage(
+      const continueAnyway = await ErrorHandler.showWarning(
         validation.warning,
         'Continue Anyway',
         'Cancel'
@@ -91,7 +104,7 @@ export async function addTimeLogCommand(
     if (requiresConfirmation(roundedMinutes)) {
       const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
       const confirmMessage = `Add ${formatMinutes(roundedMinutes)} to task ${taskId}${noteText}? This is a large time entry.`;
-      const confirmation = await vscode.window.showWarningMessage(
+      const confirmation = await ErrorHandler.showWarning(
         confirmMessage,
         'Yes, Add Time',
         'Cancel'
@@ -103,7 +116,7 @@ export async function addTimeLogCommand(
       // Standard confirmation for normal entries
       const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
       const confirmMessage = `Add ${formatMinutes(roundedMinutes)} to task ${taskId}${noteText}?`;
-      const confirmation = await vscode.window.showInformationMessage(
+      const confirmation = await ErrorHandler.showInfo(
         confirmMessage,
         'Add Time',
         'Cancel'
@@ -132,7 +145,7 @@ export async function addTimeLogCommand(
         
         // Success notification
         const noteText = note && note.trim() ? ` for "${note.trim()}"` : '';
-        vscode.window.showInformationMessage(
+        ErrorHandler.showSuccess(
           `✅ Added ${formatMinutes(roundedMinutes)} to task ${taskId}${noteText}`
         );
 
@@ -140,15 +153,11 @@ export async function addTimeLogCommand(
         vscode.commands.executeCommand('commutatus-tracker.showTask');
         
       } catch (error) {
-        console.error('Error adding time log:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        vscode.window.showErrorMessage(`Failed to add time log: ${errorMessage}`);
+        ErrorHandler.handleCommandError(error, 'add time log');
       }
     });
 
   } catch (error) {
-    console.error('Error in addTimeLogCommand:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    vscode.window.showErrorMessage(`Failed to add time log: ${errorMessage}`);
+    ErrorHandler.handleCommandError(error, 'add time log');
   }
 }

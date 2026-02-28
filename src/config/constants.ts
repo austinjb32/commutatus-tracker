@@ -16,3 +16,11 @@ export const CONFIG_KEYS = {
 export const STORAGE_KEYS = {
   CURRENT_TASK_ID: 'currentTaskId'
 } as const;
+
+// Time validation constants
+export const TIME_LIMITS = {
+  MAX_MINUTES_PER_ENTRY: 480, // 8 hours
+  MAX_MINUTES_FOR_PURE_NUMBER: 480, // 8 hours for pure number input
+  QUARTER_HOUR_INTERVAL: 15, // 15-minute rounding interval
+  CONFIRMATION_THRESHOLD_MINUTES: 240 // 4 hours - requires confirmation
+} as const;
