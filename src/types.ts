@@ -19,7 +19,7 @@ export interface Task {
   created_at?: string;
   updated_at?: string;
   comments?: TaskLog[]; // From index/create/update endpoints
-  time_logs: TimeLog[];
+  time_logs?: TimeLog[];
 }
 
 export interface TaskLog {

@@ -319,7 +319,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
    * Generate HTML for task display
    */
   private _getHtmlForTask(task: Task): string {
-    const timeLogsHtml = task.time_logs.map(log => `
+    const timeLogsHtml = (task.time_logs || []).map(log => `
         <div class="time-log-item">
             <div class="time-log-duration">${formatMinutes(log.minutes)}</div>
             <div class="log-meta">Date: ${this._formatDate(log.date)}${log.note ? ` | Note: ${log.note}` : ''}</div>
@@ -456,7 +456,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
             <button class="button" onclick="addTimeLog()">⏱️ Add Time Log</button>
         </div>
         
-        ${task.time_logs.length > 0 ? `
+        ${(task.time_logs && task.time_logs.length > 0) ? `
         <div class="section">
             <div class="section-title">Time Logs</div>
             ${timeLogsHtml}
