@@ -136,10 +136,10 @@ export class CommutatusApiClient implements ApiClient {
       throw new Error('Invalid task response: invalid description');
     }
 
-    // Handle both logs and comments fields
-    const logs = task.logs || task.comments || [];
-    if (!Array.isArray(logs)) {
-      throw new Error('Invalid task response: logs/comments must be an array');
+    // Handle comments field
+    const comments = task.comments || [];
+    if (!Array.isArray(comments)) {
+      throw new Error('Invalid task response: comments must be an array');
     }
 
     // Validate time logs array
@@ -162,8 +162,7 @@ export class CommutatusApiClient implements ApiClient {
       time_estimate: task.time_estimate,
       created_at: task.created_at,
       updated_at: task.updated_at,
-      logs: logs,
-      comments: logs, // Use same array for both fields
+      comments: comments,
       time_logs: task.time_logs || []
     };
   }

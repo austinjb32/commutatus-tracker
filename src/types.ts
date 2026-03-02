@@ -18,7 +18,6 @@ export interface Task {
   time_estimate?: string;
   created_at?: string;
   updated_at?: string;
-  logs?: TaskLog[]; // From show endpoint
   comments?: TaskLog[]; // From index/create/update endpoints
   time_logs: TimeLog[];
 }

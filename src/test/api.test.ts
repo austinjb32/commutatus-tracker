@@ -27,7 +27,6 @@ suite('API Client Tests', () => {
         description: 'Description 1',
         status: 'open',
         time_logs: [],
-        logs: [],
         comments: []
       };
 

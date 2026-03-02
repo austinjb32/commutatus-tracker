@@ -4,7 +4,7 @@ import { formatMinutes } from '../utils/time';
 
 /**
  * Webview provider for displaying task details
- * Shows task information, logs, and time logs in a clean, read-only format
+ * Shows task information, comments, and time logs in a clean, read-only format
  */
 export class TaskWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'commutatus-tracker-taskView';
@@ -326,7 +326,7 @@ export class TaskWebviewProvider implements vscode.WebviewViewProvider {
         </div>
     `).join('');
 
-    // Use logs or comments field, whichever is available
+    // Use comments field
     const commentsHtml = task.comments?.map(log => `
         <div class="comment-item">
             <div class="comment-meta">${log.user} ${this._formatDateTime(log.created_at)}</div>
