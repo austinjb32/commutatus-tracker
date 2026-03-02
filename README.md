@@ -38,7 +38,7 @@ A VS Code extension for integrating with Commutatus task tracking via API. Featu
 
 ### Optional Settings
 
-- **Commutatus Tracker › Api Url**: Base URL for the Commutatus API (default: `https://api.commutatus.com`)
+- **Commutatus Tracker › Api Url**: Base URL for the Commutatus API (default: `https://bridge.commutatus.com`)
 
 ## Usage
 

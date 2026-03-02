@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.API_URL || 'https://api.commutatus.com';
+export const API_BASE_URL = process.env.API_URL || 'https://bridge.commutatus.com';
 
 export const CONFIG_KEYS = {
   API_URL: 'commutatusTracker.apiUrl',
