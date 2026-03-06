@@ -177,7 +177,7 @@ export class CommutatusApiClient implements ApiClient {
 
     try {
       // Try to fetch a simple task or use a health check endpoint
-      const response = await fetch(`${this.baseUrl}/api/health`, {
+      const response = await fetch(`${this.baseUrl}/health_check`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.authToken}`,
